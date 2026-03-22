@@ -2,40 +2,132 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>Firebase GitHub Dashboard</title>
+    <title>GitHub Link Dashboard</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 40px; }
-        .container { display: flex; gap: 20px; flex-wrap: wrap; }
-        
-        .link-card {
-            width: 180px; height: 100px;
-            background: #24292e; color: white;
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 12px; cursor: grab;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            font-weight: bold; text-align: center; padding: 10px;
-            transition: transform 0.2s, background 0.2s;
+        :root {
+            --github-dark: #24292e;
+            --accent: #0969da;
+            --bg: #f6f8fa;
         }
 
-        .link-card:hover { background: #444; transform: translateY(-3px); }
-        .link-card:active { cursor: grabbing; }
+        body { 
+            font-family: -apple-system, system-ui, sans-serif; 
+            background: var(--bg); margin: 0; padding: 50px; 
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        /* HET INVOERVASTJE (Dashboard paneel) */
+        .input-card {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            border: 1px solid #d0d7de;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 40px;
+        }
+
+        .input-card h3 { margin-top: 0; color: var(--github-dark); }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+
+        label { font-size: 12px; font-weight: bold; color: #57606a; text-transform: uppercase; }
+
+        input { 
+            padding: 12px; 
+            border: 2px solid #edeff2; 
+            border-radius: 8px; 
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        input:focus { 
+            border-color: var(--accent); 
+            outline: none; 
+            background: #f0f7ff; 
+        }
+
+        button#saveBtn { 
+            width: 100%;
+            padding: 12px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button#saveBtn:hover { opacity: 0.9; }
+
+        /* DE SLEEPBARE BLOKJES */
+        .container { 
+            display: flex; 
+            gap: 20px; 
+            flex-wrap: wrap; 
+            justify-content: center;
+            max-width: 1000px;
+        }
         
-        h2 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .link-card {
+            width: 150px;
+            height: 80px;
+            background: var(--github-dark);
+            color: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            position: relative;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .link-card:active { cursor: grabbing; transform: scale(0.95); }
+
+        .delete-btn {
+            position: absolute; top: -10px; right: -10px;
+            background: #ff4d4d; color: white; border: none;
+            width: 24px; height: 24px; border-radius: 50%;
+            cursor: pointer; font-weight: bold; display: none;
+        }
+
+        .link-card:hover .delete-btn { display: block; }
     </style>
 </head>
 <body>
 
-    <h2>Mijn Sleepbare GitHub Links</h2>
-    <p>Deze links komen live uit je Firebase database.</p>
-    
+    <div class="input-card">
+        <h3>➕ Nieuwe Link Toevoegen</h3>
+        <div class="form-row">
+            <div class="input-group">
+                <label>Naam van de knop</label>
+                <input type="text" id="linkName" placeholder="Bijv: Mijn Repo">
+            </div>
+            <div class="input-group">
+                <label>GitHub URL</label>
+                <input type="url" id="linkUrl" placeholder="https://github.com/...">
+            </div>
+        </div>
+        <button id="saveBtn">Opslaan in Database</button>
+    </div>
+
     <div id="links-container" class="container">Laden...</div>
 
-    <!-- Firebase Scripts -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // Jouw configuratie
         const firebaseConfig = {
             apiKey: "AIzaSyDxFVlEYMIewTN6bdSOTL3H8el1V3jm-DM",
             authDomain: "schatgraversemoties.firebaseapp.com",
@@ -46,36 +138,39 @@
             appId: "1:180003857797:web:4890f9a02e1ac8c1f150ec"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-
-        // Referentie naar de plek in je database waar de links staan
         const linksRef = ref(db, 'github_links');
 
-        // Luister naar data veranderingen
-        onValue(linksRef, (snapshot) => {
-            const data = snapshot.val();
-            const container = document.getElementById('links-container');
-            container.innerHTML = ''; // Reset container
+        document.getElementById('saveBtn').onclick = () => {
+            const name = document.getElementById('linkName').value;
+            const url = document.getElementById('linkUrl').value;
+            if(name && url) {
+                push(linksRef, { name, url });
+                document.getElementById('linkName').value = '';
+                document.getElementById('linkUrl').value = '';
+            }
+        };
 
+        onValue(linksRef, (snapshot) => {
+            const container = document.getElementById('links-container');
+            container.innerHTML = '';
+            const data = snapshot.val();
             if (data) {
-                Object.values(data).forEach(item => {
+                Object.entries(data).forEach(([key, item]) => {
                     const card = document.createElement('div');
                     card.className = 'link-card';
                     card.draggable = true;
-                    card.innerText = item.name;
+                    card.innerHTML = `<button class="delete-btn">×</button>${item.name}`;
 
-                    // De Drag & Drop logica voor de browser url-balk
-                    card.addEventListener('dragstart', (e) => {
+                    card.ondragstart = (e) => {
                         e.dataTransfer.setData('text/uri-list', item.url);
                         e.dataTransfer.setData('text/plain', item.url);
-                    });
+                    };
 
+                    card.querySelector('.delete-btn').onclick = () => remove(ref(db, `github_links/${key}`));
                     container.appendChild(card);
                 });
-            } else {
-                container.innerText = 'Geen links gevonden in de database.';
             }
         });
     </script>
