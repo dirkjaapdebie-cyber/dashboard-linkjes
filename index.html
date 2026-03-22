@@ -1,21 +1,83 @@
 <!DOCTYPE html>
-<html>
+<html lang="nl">
 <head>
+    <meta charset="UTF-8">
+    <title>Firebase GitHub Dashboard</title>
     <style>
-        .box { 
-            width: 200px; padding: 20px; margin: 10px; 
-            background: #ff4757; color: white; border-radius: 8px;
-            cursor: grab; text-align: center; font-weight: bold;
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 40px; }
+        .container { display: flex; gap: 20px; flex-wrap: wrap; }
+        
+        .link-card {
+            width: 180px; height: 100px;
+            background: #24292e; color: white;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 12px; cursor: grab;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-weight: bold; text-align: center; padding: 10px;
+            transition: transform 0.2s, background 0.2s;
         }
+
+        .link-card:hover { background: #444; transform: translateY(-3px); }
+        .link-card:active { cursor: grabbing; }
+        
+        h2 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
     </style>
 </head>
 <body>
 
-    <h2>Sleep dit blokje naar je adresbalk:</h2>
+    <h2>Mijn Sleepbare GitHub Links</h2>
+    <p>Deze links komen live uit je Firebase database.</p>
     
-    <div class="box" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', 'https://github.com')">
-        SLEEP MIJ NAAR BOVEN
-    </div>
+    <div id="links-container" class="container">Laden...</div>
 
+    <!-- Firebase Scripts -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Jouw configuratie
+        const firebaseConfig = {
+            apiKey: "AIzaSyDxFVlEYMIewTN6bdSOTL3H8el1V3jm-DM",
+            authDomain: "schatgraversemoties.firebaseapp.com",
+            databaseURL: "https://schatgraversemoties-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "schatgraversemoties",
+            storageBucket: "schatgraversemoties.firebasestorage.app",
+            messagingSenderId: "180003857797",
+            appId: "1:180003857797:web:4890f9a02e1ac8c1f150ec"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Referentie naar de plek in je database waar de links staan
+        const linksRef = ref(db, 'github_links');
+
+        // Luister naar data veranderingen
+        onValue(linksRef, (snapshot) => {
+            const data = snapshot.val();
+            const container = document.getElementById('links-container');
+            container.innerHTML = ''; // Reset container
+
+            if (data) {
+                Object.values(data).forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'link-card';
+                    card.draggable = true;
+                    card.innerText = item.name;
+
+                    // De Drag & Drop logica voor de browser url-balk
+                    card.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('text/uri-list', item.url);
+                        e.dataTransfer.setData('text/plain', item.url);
+                    });
+
+                    container.appendChild(card);
+                });
+            } else {
+                container.innerText = 'Geen links gevonden in de database.';
+            }
+        });
+    </script>
 </body>
 </html>
